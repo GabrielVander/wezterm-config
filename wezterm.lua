@@ -45,6 +45,7 @@ config.launch_menu = {
 
 -- MOUSE & KEY BINDINGS
 config.disable_default_key_bindings = true
+config.use_dead_keys = false
 
 config.leader = { key = "m", mods = "ALT", timeout_milliseconds = 2000 }
 
