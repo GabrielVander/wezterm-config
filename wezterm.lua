@@ -73,6 +73,13 @@ config.keys = {
 		action = wezterm.action.ShowDebugOverlay,
 	},
 
+	-- Activate Copy mode
+	{
+		key = "[",
+		mods = "LEADER",
+		action = wezterm.action.ActivateCopyMode,
+	},
+
 	-- Copy/Paste functionality
 	{ key = "C", mods = "CTRL|SHIFT", action = wezterm.action.CopyTo("ClipboardAndPrimarySelection") },
 	{ key = "V", mods = "CTRL|SHIFT", action = wezterm.action.PasteFrom("Clipboard") },
