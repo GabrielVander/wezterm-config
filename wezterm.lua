@@ -31,7 +31,7 @@ config.window_decorations = "RESIZE"
 config.font_size = 11
 config.font = wezterm.font({
 	family = "JetBrainsMono Nerd Font",
-	weight = "DemiBold",
+	weight = "Medium",
 })
 
 -- BEHAVIOR
@@ -72,6 +72,7 @@ config.keys = {
 		mods = "LEADER|SHIFT",
 		action = wezterm.action.ShowDebugOverlay,
 	},
+
 	-- Show launcher menu
 	{
 		key = "P",
@@ -87,6 +88,7 @@ config.keys = {
 			domain = "CurrentPaneDomain",
 		}),
 	},
+
 	-- Underscore (_) -> vertical split
 	{
 		key = "-",
@@ -130,6 +132,7 @@ config.keys = {
 		key = "m",
 		action = wezterm.action.PaneSelect,
 	},
+
 	-- Use CTRL + [h|j|k|l] to move between panes
 	{
 		key = "h",
