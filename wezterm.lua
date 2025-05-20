@@ -22,7 +22,7 @@ config.colors = {
 config.window_padding = {
 	left = 0,
 	right = 0,
-	top = 0,
+	top = 3,
 	bottom = 0,
 }
 config.window_background_opacity = 0.90
@@ -44,6 +44,10 @@ config.launch_menu = {
 }
 
 -- MOUSE & KEY BINDINGS
+config.disable_default_key_bindings = true
+
+config.leader = { key = "m", mods = "ALT", timeout_milliseconds = 2000 }
+
 config.mouse_bindings = {
 	-- Open URLs with LEADER+Click
 	{
@@ -52,8 +56,20 @@ config.mouse_bindings = {
 		action = wezterm.action.OpenLinkAtMouseCursor,
 	},
 }
-config.leader = { key = "m", mods = "ALT", timeout_milliseconds = 2000 }
 config.keys = {
+	-- Activate command palette
+	{
+		key = "P",
+		mods = "CTRL|SHIFT",
+		action = wezterm.action.ActivateCommandPalette,
+	},
+
+	-- Show debug overlay
+	{
+		key = "L",
+		mods = "LEADER|SHIFT",
+		action = wezterm.action.ShowDebugOverlay,
+	},
 	-- Show launcher menu
 	{
 		key = "P",
