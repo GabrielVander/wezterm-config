@@ -73,6 +73,10 @@ config.keys = {
 		action = wezterm.action.ShowDebugOverlay,
 	},
 
+	-- Copy/Paste functionality
+	{ key = "C", mods = "CTRL|SHIFT", action = wezterm.action.CopyTo("ClipboardAndPrimarySelection") },
+	{ key = "V", mods = "CTRL|SHIFT", action = wezterm.action.PasteFrom("Clipboard") },
+
 	-- Show launcher menu
 	{
 		key = "P",
