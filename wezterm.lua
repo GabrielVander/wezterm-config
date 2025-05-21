@@ -102,7 +102,7 @@ config.keys = {
 
 	-- Underscore (_) -> vertical split
 	{
-		key = "-",
+		key = "_",
 		mods = "LEADER|SHIFT",
 		action = wezterm.action.SplitVertical({
 			domain = "CurrentPaneDomain",
