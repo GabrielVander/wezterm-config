@@ -25,7 +25,7 @@ config.window_padding = {
 	top = 3,
 	bottom = 0,
 }
-config.window_background_opacity = 0.90
+config.window_background_opacity = 0.98
 config.window_decorations = "RESIZE"
 
 config.font_size = 11
