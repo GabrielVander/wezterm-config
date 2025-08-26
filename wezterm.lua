@@ -7,6 +7,9 @@ end)
 
 -- Configure everything here on the `config` object
 
+-- MULTIPLEXING
+config.default_gui_startup_args = { 'connect', 'unix' }
+
 -- APPEARANCE
 config.color_scheme = "Catppuccin Mocha"
 
