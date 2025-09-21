@@ -1,18 +1,113 @@
+local os = require("os")
 local wezterm = require("wezterm")
-local config = wezterm.config_builder()
+local mux = wezterm.mux
+local session_manager = require("wezterm-session-manager/session-manager")
 
-wezterm.on("update-right-status", function(window, pane)
+-- Session Manager event bindings
+-- See https://github.com/danielcopper/wezterm-session-manager
+wezterm.on("save_session", function(window)
+	session_manager.save_state(window)
+end)
+wezterm.on("load_session", function(window)
+	session_manager.load_state(window)
+end)
+wezterm.on("restore_session", function(window)
+	session_manager.restore_state(window)
+end)
+
+-- Wezterm <-> nvim pane navigation
+-- https://github.com/aca/wezterm.nvim
+
+local move_around = function(window, pane, direction_wez, direction_nvim)
+	local result = os.execute(
+		"env NVIM_LISTEN_ADDRESS=/tmp/nvim"
+			.. pane:pane_id()
+			.. " "
+			.. wezterm.home_dir
+			.. "/.local/bin/wezterm.nvim.navigator"
+			.. " "
+			.. direction_nvim
+	)
+	if result then
+		window:perform_action(wezterm.action({ SendString = "\x17" .. direction_nvim }), pane)
+	else
+		window:perform_action(wezterm.action({ ActivatePaneDirection = direction_wez }), pane)
+	end
+end
+
+wezterm.on("move-left", function(window, pane)
+	move_around(window, pane, "Left", "h")
+end)
+
+wezterm.on("move-right", function(window, pane)
+	move_around(window, pane, "Right", "l")
+end)
+
+wezterm.on("move-up", function(window, pane)
+	move_around(window, pane, "Up", "k")
+end)
+
+wezterm.on("move-down", function(window, pane)
+	move_around(window, pane, "Down", "j")
+end)
+
+local vim_resize = function(window, pane, direction_wez, direction_nvim)
+	local result = os.execute(
+		"env NVIM_LISTEN_ADDRESS=/tmp/nvim"
+			.. pane:pane_id()
+			.. " "
+			.. wezterm.home_dir
+			.. "/.local/bin/wezterm.nvim.navigator"
+			.. " "
+			.. direction_nvim
+	)
+	if result then
+		window:perform_action(wezterm.action({ SendString = "\x1b" .. direction_nvim }), pane)
+	else
+		window:perform_action(wezterm.action({ ActivatePaneDirection = direction_wez }), pane)
+	end
+end
+
+wezterm.on("resize-left", function(window, pane)
+	vim_resize(window, pane, "Left", "h")
+end)
+
+wezterm.on("resize-right", function(window, pane)
+	vim_resize(window, pane, "Right", "l")
+end)
+
+wezterm.on("resize-up", function(window, pane)
+	vim_resize(window, pane, "Up", "k")
+end)
+
+wezterm.on("resize-down", function(window, pane)
+	vim_resize(window, pane, "Down", "j")
+end)
+
+wezterm.on("update-right-status", function(window, _)
 	window:set_right_status(window:active_workspace())
 end)
 
 -- Configure everything here on the `config` object
 
--- MULTIPLEXING
-config.default_gui_startup_args = { 'connect', 'unix' }
+-- This table will hold the configuration.
+local config = {}
+
+-- In newer versions of wezterm, use the config_builder which will
+-- help provide clearer error messages
+if wezterm.config_builder then
+	config = wezterm.config_builder()
+end
+
+-- LEADER
+-- Binding to ctrl-a here to mimic tmux
+config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 2000 }
 
 -- APPEARANCE
 config.color_scheme = "Catppuccin Mocha"
-
+config.enable_scroll_bar = true
+config.enable_wayland = true
+config.hide_tab_bar_if_only_one_tab = false
 config.tab_bar_at_bottom = true
 config.use_fancy_tab_bar = false
 config.tab_max_width = 32
@@ -25,13 +120,13 @@ config.colors = {
 config.window_padding = {
 	left = 0,
 	right = 0,
-	top = 3,
+	top = 0,
 	bottom = 0,
 }
 config.window_background_opacity = 0.98
 config.window_decorations = "RESIZE"
 
-config.font_size = 11
+config.font_size = 10
 config.font = wezterm.font({
 	family = "JetBrainsMono Nerd Font",
 	weight = "Medium",
@@ -51,13 +146,11 @@ config.disable_default_key_bindings = true
 config.use_dead_keys = false
 config.use_ime = true
 
-config.leader = { key = "m", mods = "ALT", timeout_milliseconds = 2000 }
-
 config.mouse_bindings = {
 	-- Open URLs with LEADER+Click
 	{
 		event = { Up = { streak = 1, button = "Left" } },
-		mods = "LEADER",
+		mods = "CTRL",
 		action = wezterm.action.OpenLinkAtMouseCursor,
 	},
 }
@@ -69,6 +162,12 @@ config.keys = {
 		action = wezterm.action.ActivateCommandPalette,
 	},
 
+	-- Show tab navigator; similar to listing panes in tmux
+	{
+		key = "w",
+		mods = "LEADER",
+		action = wezterm.action.ShowTabNavigator,
+	},
 	-- Show debug overlay
 	{
 		key = "L",
@@ -105,8 +204,8 @@ config.keys = {
 
 	-- Underscore (_) -> vertical split
 	{
-		key = "_",
-		mods = "LEADER|SHIFT",
+		key = "-",
+		mods = "LEADER",
 		action = wezterm.action.SplitVertical({
 			domain = "CurrentPaneDomain",
 		}),
@@ -126,10 +225,10 @@ config.keys = {
 		action = wezterm.action.SpawnTab("DefaultDomain"),
 	},
 
-	-- Rename current tab
+	-- Rename current tab; analagous to command in tmux
 	{
-		key = "C",
-		mods = "LEADER|SHIFT",
+		key = ",",
+		mods = "LEADER",
 		action = wezterm.action.PromptInputLine({
 			description = "Enter new name for tab",
 			action = wezterm.action_callback(function(window, _, line)
@@ -142,12 +241,12 @@ config.keys = {
 
 	-- Move to a pane (prompt to which one)
 	{
-		mods = "LEADER",
 		key = "m",
+		mods = "LEADER",
 		action = wezterm.action.PaneSelect,
 	},
 
-	-- Use CTRL + [h|j|k|l] to move between panes
+	-- Use CTRL + Shift + [h|j|k|l] to move between panes
 	{
 		key = "h",
 		mods = "CTRL|SHIFT",
@@ -169,125 +268,71 @@ config.keys = {
 		action = wezterm.action.ActivatePaneDirection("Right"),
 	},
 
+	-- ALT + Shift + (h,j,k,l) to resize panes
+	{
+		key = "h",
+		mods = "ALT|SHIFT",
+		action = wezterm.action({ EmitEvent = "resize-left" }),
+	},
+	{
+		key = "j",
+		mods = "ALT|SHIFT",
+		action = wezterm.action({ EmitEvent = "resize-down" }),
+	},
+	{
+		key = "k",
+		mods = "ALT|SHIFT",
+		action = wezterm.action({ EmitEvent = "resize-up" }),
+	},
+	{
+		key = "l",
+		mods = "ALT|SHIFT",
+		action = wezterm.action({ EmitEvent = "resize-right" }),
+	},
 	-- Move to another pane (next or previous)
 	{
-		key = "[",
-		mods = "CTRL",
+		key = ";",
+		mods = "LEADER",
 		action = wezterm.action.ActivatePaneDirection("Prev"),
 	},
 	{
-		key = "]",
-		mods = "CTRL",
+		key = "o",
+		mods = "LEADER",
 		action = wezterm.action.ActivatePaneDirection("Next"),
 	},
 
 	-- Move to another tab (next or previous)
 	{
-		key = "{",
-		mods = "CTRL|SHIFT",
+		key = "p",
+		mods = "LEADER",
 		action = wezterm.action.ActivateTabRelative(-1),
 	},
 	{
-		key = "}",
-		mods = "CTRL|SHIFT",
+		key = "n",
+		mods = "LEADER",
 		action = wezterm.action.ActivateTabRelative(1),
 	},
 
-	-- Move to anoher workspace (next or previous)
-	{ key = "{", mods = "CTRL|SHIFT|ALT", action = wezterm.action.SwitchWorkspaceRelative(-1) },
-	{ key = "}", mods = "CTRL|SHIFT|ALT", action = wezterm.action.SwitchWorkspaceRelative(1) },
-
-	-- Prompt for a name to use for a new workspace and switch to it.
+	-- Use LEADER+Shift+{ to swap the active pane and another one
 	{
-		key = "T",
-		mods = "LEADER|CTRL|SHIFT",
-		action = wezterm.action.PromptInputLine({
-			description = wezterm.format({
-				{ Attribute = { Intensity = "Bold" } },
-				{ Foreground = { AnsiColor = "Fuchsia" } },
-				{ Text = "Enter name for new workspace" },
-			}),
-			action = wezterm.action_callback(function(window, pane, line)
-				-- line will be `nil` if they hit escape without entering anything
-				-- An empty string if they just hit enter
-				-- Or the actual line of text they wrote
-				if line then
-					window:perform_action(
-						wezterm.action.SwitchToWorkspace({
-							name = line,
-						}),
-						pane
-					)
-				end
-			end),
-		}),
-	},
-
-	-- Rename workspace
-	{
-		key = "T",
-		mods = "LEADER|SHIFT",
-		action = wezterm.action.PromptInputLine({
-			description = "(wezterm) Set workspace title:",
-			action = wezterm.action_callback(function(win, pane, line)
-				if line then
-					wezterm.mux.rename_workspace(wezterm.mux.get_active_workspace(), line)
-				end
-			end),
-		}),
-	},
-	-- Launch workspace selection
-	{
-		key = "t",
-		mods = "LEADER",
-		action = wezterm.action_callback(function(win, pane)
-			-- create workspace list
-			local workspaces = {}
-			for i, name in ipairs(wezterm.mux.get_workspace_names()) do
-				table.insert(workspaces, {
-					id = name,
-					label = string.format("%d. %s", i, name),
-				})
-			end
-			win:perform_action(
-				wezterm.action.InputSelector({
-					action = wezterm.action_callback(function(_, _, id, label)
-						if not id and not label then
-							wezterm.log_info("Workspace selection canceled") -- 入力が空ならキャンセル
-						else
-							win:perform_action(wezterm.action.SwitchToWorkspace({ name = id }), pane) -- workspace を移動
-						end
-					end),
-					title = "Select workspace",
-					choices = workspaces,
-					fuzzy = true,
-					-- fuzzy_description = string.format("Select workspace: %s -> ", current), -- requires nightly build
-				}),
-				pane
-			)
-		end),
-	},
-	-- Use LEADER+Shift+S t swap the active pane and another one
-	{
-		key = "s",
+		key = "{",
 		mods = "LEADER|SHIFT",
 		action = wezterm.action({
 			PaneSelect = { mode = "SwapWithActiveKeepFocus" },
 		}),
 	},
 
-	-- Use LEADER+w to close the pane, LEADER+SHIFT+w to close the tab
+	-- Use LEADER+x to close the pane, LEADER+SHIFT+x to close the tab
 	{
-		key = "w",
+		key = "x",
 		mods = "LEADER",
 		action = wezterm.action.CloseCurrentPane({ confirm = true }),
 	},
 	{
-		key = "w",
+		key = "x",
 		mods = "LEADER|SHIFT",
 		action = wezterm.action.CloseCurrentTab({ confirm = true }),
 	},
-
 	-- Use LEADER+z to enter zoom state
 	{
 		key = "z",
@@ -295,14 +340,57 @@ config.keys = {
 		action = wezterm.action.TogglePaneZoomState,
 	},
 
-	-- -- Launch commands in a new pane
-	-- {
-	-- 	key = "g",
-	-- 	mods = "LEADER",
-	-- 	action = wezterm.action.SplitHorizontal({
-	-- 		args = { os.getenv("SHELL"), "-c", "lg" },
-	-- 	}),
-	-- },
+	-- Attach to muxer
+	{
+		key = "a",
+		mods = "LEADER",
+		action = wezterm.action.AttachDomain("unix"),
+	},
+
+	-- Detach from muxer
+	{
+		key = "d",
+		mods = "LEADER",
+		action = wezterm.action.DetachDomain({ DomainName = "unix" }),
+	}, -- -- Launch commands in a new pane
+
+	-- Show list of workspaces
+	{
+		key = "s",
+		mods = "LEADER",
+		action = wezterm.action.ShowLauncherArgs({ flags = "WORKSPACES" }),
+	},
+
+	-- Rename current session; analagous to command in tmux
+	{
+		key = "$",
+		mods = "LEADER|SHIFT",
+		action = wezterm.action.PromptInputLine({
+			description = "Enter new name for session",
+			action = wezterm.action_callback(function(window, _, line)
+				if line then
+					mux.rename_workspace(window:mux_window():get_workspace(), line)
+				end
+			end),
+		}),
+	},
+
+	-- Session manager bindings
+	{
+		key = "s",
+		mods = "LEADER|SHIFT",
+		action = wezterm.action({ EmitEvent = "save_session" }),
+	},
+	{
+		key = "L",
+		mods = "LEADER|SHIFT",
+		action = wezterm.action({ EmitEvent = "load_session" }),
+	},
+	{
+		key = "R",
+		mods = "LEADER|SHIFT",
+		action = wezterm.action({ EmitEvent = "restore_session" }),
+	},
 }
 
 return config
